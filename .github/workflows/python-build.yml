@@ -29,7 +29,10 @@ on:
         description: >-
           For pre-release builds such as TestPyPI: a file, relative to working-directory,
           whose first `version = "..."`, `VERSION = "..."` or `__version__ = "..."`
-          assignment gets a `.dev<run number><run attempt>` suffix before the build.
+          assignment gets a `.devN` suffix before the build. N is
+          `run_id * 1000 + run_attempt`: unique in the repository, also across
+          re-runs and renamed workflow files (a workflow's run number restarts at 1
+          when its file is renamed).
         type: string
         default: ""
       artifact-name:
@@ -66,7 +69,8 @@ jobs:
         if: inputs.dev-version-file != ''
         env:
           VERSION_FILE: ${{ inputs.dev-version-file }}
-          DEV_SUFFIX: .dev${{ github.run_number }}${{ github.run_attempt }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           python3 - <<'EOF'
           import os
@@ -74,12 +78,13 @@ jobs:
           import re
 
           path = pathlib.Path(os.environ["VERSION_FILE"])
+          dev_suffix = f".dev{int(os.environ['RUN_ID']) * 1000 + int(os.environ['RUN_ATTEMPT'])}"
           pattern = re.compile(
               r"""^(\s*(?:__version__|VERSION|version)\s*=\s*["'])([^"']+)(["'])""",
               re.MULTILINE,
           )
           text, count = pattern.subn(
-              lambda m: m.group(1) + m.group(2) + os.environ["DEV_SUFFIX"] + m.group(3),
+              lambda m: m.group(1) + m.group(2) + dev_suffix + m.group(3),
               path.read_text(),
               count=1,
           )

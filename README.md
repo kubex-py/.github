@@ -41,6 +41,11 @@ Every input is documented in the workflow file.
 every org repository. The publish templates list the PyPI trusted-publisher settings to
 register.
 
+The template files end in `.yml`, the only extension GitHub documents for templates, but
+save them in a repository as `.yaml` (`ci.yaml`, `publish.yaml`, `publish-test.yaml`,
+`docs.yaml`): that is the org's convention, and a PyPI trusted publisher matches the
+workflow file name exactly.
+
 ## Testing changes
 
 [self-test.yml](.github/workflows/self-test.yml) runs the reusable workflows against the

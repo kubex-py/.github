@@ -1,3 +1,5 @@
+# Save as .github/workflows/ci.yaml (the org names workflow files .yaml).
+
 name: CI
 
 on:

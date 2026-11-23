@@ -1,10 +1,13 @@
 # Publishes to PyPI when a release tag is pushed.
 #
+# Save as .github/workflows/publish.yaml. The org names workflow files .yaml, and the
+# PyPI trusted publisher matches the file name exactly.
+#
 # PyPI trusted publisher, at https://pypi.org/manage/project/<project>/settings/publishing/
 # (or as a pending publisher before the first release):
 #   Owner:         kubex-py
 #   Repository:    <this repository>
-#   Workflow name: publish.yml
+#   Workflow name: publish.yaml
 #   Environment:   pypi
 
 name: Publish to PyPI

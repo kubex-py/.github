@@ -1,3 +1,5 @@
+# Save as .github/workflows/docs.yaml (the org names workflow files .yaml).
+
 name: Docs
 
 on:

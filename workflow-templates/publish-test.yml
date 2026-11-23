@@ -1,9 +1,12 @@
 # Publishes a .dev build of every pull request from this repository to TestPyPI.
 #
+# Save as .github/workflows/publish-test.yaml. The org names workflow files .yaml, and
+# the TestPyPI trusted publisher matches the file name exactly.
+#
 # TestPyPI trusted publisher, at https://test.pypi.org/manage/project/<project>/settings/publishing/:
 #   Owner:         kubex-py
 #   Repository:    <this repository>
-#   Workflow name: publish-test.yml
+#   Workflow name: publish-test.yaml
 #   Environment:   test-pypi
 
 name: Publish to TestPyPI

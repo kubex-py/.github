@@ -57,11 +57,11 @@ jobs:
       SYNC_ARGS: ${{ inputs.sync-args }}
       DOCS_GROUP: ${{ inputs.docs-group }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # mike commits to the gh-pages branch and pushes it.
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v10.4.0
       - name: Install docs dependencies
         run: uv sync $SYNC_ARGS --group "$DOCS_GROUP"
       - name: Build docs (strict)

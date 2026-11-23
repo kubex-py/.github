@@ -1,0 +1,6 @@
+{
+  "name": "kubex-py: CI",
+  "description": "pre-commit, ruff, mypy and pytest on 3.11-3.15 plus the free-threaded 3.14t and 3.15t, through the org's reusable workflow.",
+  "categories": ["Python"],
+  "filePatterns": ["pyproject.toml$"]
+}

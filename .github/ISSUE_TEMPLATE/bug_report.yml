@@ -1,0 +1,36 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code that shows the problem. Leave out credentials and cluster details.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback or logs
+      render: text
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: |
+        The package version (`pip show <package>`), the Python version (say if it is a
+        free-threaded build such as 3.14t), and where it matters the OS, the Kubernetes
+        version, the HTTP client (httpx or aiohttp) and the async runtime (asyncio or trio).
+      placeholder: |
+        kubex 0.1.0b5, Python 3.14, Linux, Kubernetes 1.35, httpx, asyncio
+    validations:
+      required: true

@@ -1,0 +1,105 @@
+name: Docs deploy (mike)
+
+# Reusable workflow: build the mkdocs site with --strict, then publish it with mike to the
+# gh-pages branch.
+#
+#   push to the default branch  -> the `dev` version (and the site default, see dev-is-default)
+#   push of a release tag       -> a version named after the tag without tag-prefix;
+#                                  promoting it to `latest` stays manual, so a patch on an
+#                                  older release line can't become the default by accident
+#   workflow_dispatch           -> the `version-label` input
+#
+# The calling job must grant `contents: write`. For pull request checks, use the `docs`
+# input of python-ci.yml instead, which needs only read access.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory of the uv project, relative to the repository root.
+        type: string
+        default: "."
+      python-version:
+        description: Python version for the docs build.
+        type: string
+        default: "3.13"
+      sync-args:
+        description: Arguments for `uv sync`.
+        type: string
+        default: "--locked"
+      docs-group:
+        description: The dependency group with mkdocs, mike and the plugins.
+        type: string
+        default: docs
+      tag-prefix:
+        description: Prefix of release tags.
+        type: string
+        default: "v"
+      version-label:
+        description: The version to deploy on workflow_dispatch.
+        type: string
+        default: dev
+      dev-is-default:
+        description: After deploying `dev`, make it the version the site root redirects to.
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    env:
+      UV_PYTHON: ${{ inputs.python-version }}
+      SYNC_ARGS: ${{ inputs.sync-args }}
+      DOCS_GROUP: ${{ inputs.docs-group }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # mike commits to the gh-pages branch and pushes it.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.4.0
+      - name: Install docs dependencies
+        run: uv sync $SYNC_ARGS --group "$DOCS_GROUP"
+      - name: Build docs (strict)
+        run: uv run --no-sync mkdocs build --strict
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Deploy
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          TAG_PREFIX: ${{ inputs.tag-prefix }}
+          VERSION_LABEL: ${{ inputs.version-label }}
+          DEV_IS_DEFAULT: ${{ inputs.dev-is-default }}
+        run: |
+          if [ "$EVENT" = push ] && [ "$REF_TYPE" = tag ]; then
+            case "$REF_NAME" in
+              "$TAG_PREFIX"*) VERSION="${REF_NAME#"$TAG_PREFIX"}" ;;
+              *) echo "::error::tag $REF_NAME does not start with '$TAG_PREFIX'"; exit 1 ;;
+            esac
+            uv run --no-sync mike deploy --push "$VERSION"
+            exit 0
+          fi
+
+          if [ "$EVENT" = push ]; then
+            if [ "$REF_NAME" != "$DEFAULT_BRANCH" ]; then
+              echo "::error::docs deploy runs on pushes to $DEFAULT_BRANCH, release tags and workflow_dispatch"
+              exit 1
+            fi
+            LABEL=dev
+          else
+            LABEL="$VERSION_LABEL"
+          fi
+
+          uv run --no-sync mike deploy --push --update-aliases "$LABEL"
+          if [ "$LABEL" = dev ] && [ "$DEV_IS_DEFAULT" = true ]; then
+            uv run --no-sync mike set-default --push dev
+          fi

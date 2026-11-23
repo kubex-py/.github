@@ -1,0 +1,6 @@
+{
+  "name": "kubex-py: Docs",
+  "description": "Deploy the mkdocs site with mike: the default branch as dev, release tags as versions.",
+  "categories": ["Python"],
+  "filePatterns": ["mkdocs.yml$"]
+}

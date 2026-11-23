@@ -1,0 +1,26 @@
+[project]
+name = "kubex-py-fixture"
+version = "0.1.0"
+description = "A tiny package the reusable workflows are tested against"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kubex_py_fixture"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "ruff>=0.15",
+]
+docs = [
+    "mkdocs>=1.6",
+]
+
+[tool.mypy]
+strict = true

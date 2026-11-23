@@ -1,0 +1,51 @@
+name: Self-test
+
+# Runs the reusable workflows against the fixture package in tests/fixture.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/fixture
+      pre-commit: false
+      mypy-args: src tests
+      docs: true
+
+  build:
+    uses: ./.github/workflows/python-build.yml
+    with:
+      working-directory: tests/fixture
+      dev-version-file: pyproject.toml
+      artifact-name: fixture-dist
+
+  check-build:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: fixture-dist
+          path: dist/
+      - name: Check the dev version and the files
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          ls -la dist/
+          case "$VERSION" in
+            0.1.0.dev*) ;;
+            *) echo "::error::unexpected version '$VERSION'"; exit 1 ;;
+          esac
+          test -f "dist/kubex_py_fixture-$VERSION-py3-none-any.whl"
+          test -f "dist/kubex_py_fixture-$VERSION.tar.gz"

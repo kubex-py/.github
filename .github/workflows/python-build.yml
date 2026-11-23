@@ -1,0 +1,141 @@
+name: Python build
+
+# Reusable workflow: build the sdist and wheel with `uv build` and upload them as an
+# artifact. Publishing stays in the calling workflow, because PyPI trusted publishing does
+# not work from inside a reusable workflow. See workflow-templates/publish.yml.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory of the uv project, relative to the repository root.
+        type: string
+        default: "."
+      python-version:
+        description: Python version used to build.
+        type: string
+        default: "3.14"
+      check-tag:
+        description: >-
+          On a tag push, fail unless the built version equals the tag without tag-prefix
+          (compared as PEP 440 versions) and the tagged commit is on the default branch.
+        type: boolean
+        default: false
+      tag-prefix:
+        description: Prefix of release tags.
+        type: string
+        default: "v"
+      dev-version-file:
+        description: >-
+          For pre-release builds such as TestPyPI: a file, relative to working-directory,
+          whose first `version = "..."`, `VERSION = "..."` or `__version__ = "..."`
+          assignment gets a `.dev<run number><run attempt>` suffix before the build.
+        type: string
+        default: ""
+      artifact-name:
+        description: Name of the uploaded artifact.
+        type: string
+        default: dist
+    outputs:
+      version:
+        description: The version of the built wheel, PEP 440 normalized.
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    env:
+      UV_PYTHON: ${{ inputs.python-version }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # The tag check needs the default branch's history.
+          fetch-depth: ${{ inputs.check-tag && '0' || '1' }}
+      - uses: astral-sh/setup-uv@v10.4.0
+
+      - name: Add a dev version suffix
+        if: inputs.dev-version-file != ''
+        env:
+          VERSION_FILE: ${{ inputs.dev-version-file }}
+          DEV_SUFFIX: .dev${{ github.run_number }}${{ github.run_attempt }}
+        run: |
+          python3 - <<'EOF'
+          import os
+          import pathlib
+          import re
+
+          path = pathlib.Path(os.environ["VERSION_FILE"])
+          pattern = re.compile(
+              r"""^(\s*(?:__version__|VERSION|version)\s*=\s*["'])([^"']+)(["'])""",
+              re.MULTILINE,
+          )
+          text, count = pattern.subn(
+              lambda m: m.group(1) + m.group(2) + os.environ["DEV_SUFFIX"] + m.group(3),
+              path.read_text(),
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit(f"no version assignment found in {path}")
+          path.write_text(text)
+          print(pattern.search(text).group(0))
+          EOF
+
+      - name: Build
+        run: uv build --out-dir dist/
+
+      - name: Read the built version
+        id: version
+        run: |
+          ls -la dist/
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import email.parser
+          import glob
+          import zipfile
+
+          wheels = glob.glob("dist/*.whl")
+          if len(wheels) != 1:
+              raise SystemExit(f"expected one wheel in dist/, found {wheels}")
+          with zipfile.ZipFile(wheels[0]) as wheel:
+              name = next(n for n in wheel.namelist() if n.endswith(".dist-info/METADATA"))
+              metadata = email.parser.Parser().parsestr(wheel.read(name).decode())
+          print(f"version={metadata['Version']}")
+          EOF
+
+      - name: Check the version matches the tag
+        if: inputs.check-tag && github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+          TAG_PREFIX: ${{ inputs.tag-prefix }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
+            echo "::error::$TAG does not point to a commit on $DEFAULT_BRANCH"
+            exit 1
+          fi
+          uv run --no-project --with packaging python - <<'EOF'
+          import os
+          from packaging.version import Version
+
+          tag, prefix, version = os.environ["TAG"], os.environ["TAG_PREFIX"], os.environ["VERSION"]
+          if not tag.startswith(prefix):
+              raise SystemExit(f"::error::tag {tag} does not start with {prefix!r}")
+          if Version(tag[len(prefix):]) != Version(version):
+              raise SystemExit(f"::error::built version {version} does not match tag {tag}")
+          print(f"version {version} matches tag {tag}")
+          EOF
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.working-directory }}/dist/
+          if-no-files-found: error

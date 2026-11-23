@@ -1,0 +1,6 @@
+{
+  "name": "kubex-py: Publish to TestPyPI",
+  "description": "Publish a .dev build of each pull request to TestPyPI with trusted publishing.",
+  "categories": ["Python"],
+  "filePatterns": ["pyproject.toml$"]
+}

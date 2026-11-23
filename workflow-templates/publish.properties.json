@@ -1,0 +1,6 @@
+{
+  "name": "kubex-py: Publish to PyPI",
+  "description": "Build with the org's reusable workflow and publish a release tag to PyPI with trusted publishing.",
+  "categories": ["Python"],
+  "filePatterns": ["pyproject.toml$"]
+}

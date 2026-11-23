@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [$default-branch]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: kubex-py/.github/.github/workflows/python-ci.yml@main
+    # All inputs are optional; see the workflow for the full list.
+    # with:
+    #   test-sync-args: --all-extras
+    #   mypy-args: src tests
+    #   docs: true
+    #   lychee-args: --config lychee.toml docs/
